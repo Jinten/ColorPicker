@@ -27,6 +27,9 @@
         </DrawingBrush.Drawing>
     </DrawingBrush>
 
+    <Path x:Key="DropperShape" Stroke="Gray" Fill="Black" StrokeThickness="1" Stretch="Uniform"
+          Data="M0,0 L0,100 A 1,1 90 0 0 100 100 L 100,0 Z M50,150 A 1,1 180 0 0 130,150 A 1,1 180 0 0 50,150 Z"/>
+
     <Style TargetType="{x:Type local:ColorPicker}">
         <Setter Property="ColorPickerWindowStyle">
             <Setter.Value>
@@ -43,7 +46,7 @@
                                     <Grid>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="16"/>
-                                            <RowDefinition Height="{Binding Source={x:Static local:ControlSize.CurrentPreviewHeight}}"/>
+                                            <RowDefinition Height="{Binding Source={x:Static local:ControlSize.HeaderHeight}}"/>
                                             <!--Margin-->
                                             <RowDefinition Height="8"/>
                                             <RowDefinition Height="{Binding Source={x:Static local:ControlSize.SVPickAreaHeight}}"/>
@@ -64,6 +67,10 @@
                                                                Width="{Binding Source={x:Static local:ControlSize.CurrentPreviewWidth}}"
                                                                Height="{Binding Source={x:Static local:ControlSize.CurrentPreviewHeight}}"/>
                                                 </Canvas>
+
+                                                <Border BorderBrush="Gray" BorderThickness="1" Width="16" Background="White" Height="16" Margin="4,0,0,0" HorizontalAlignment="Left">
+                                                    <ContentControl x:Name="__DropperSymble__" Content="{StaticResource DropperShape}"/>
+                                                </Border>
 
                                             </DockPanel>
                                         </Grid>
