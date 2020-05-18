@@ -16,9 +16,9 @@
     <Grid Background="Black">
         <Border BorderBrush="Gray" BorderThickness="1">
             <StackPanel VerticalAlignment="Center">
-                <ctrls:ColorPicker R="{Binding R}" G="{Binding G}" B="{Binding B}" H="{Binding H}" S="{Binding S}" V="{Binding V}"/>
-                <TextBlock Text="{Binding RGBInfo}" Foreground="WhiteSmoke" HorizontalAlignment="Center"/>
-                <TextBlock Text="{Binding HSVInfo}" Foreground="WhiteSmoke" HorizontalAlignment="Center"/>
+                <ctrls:ColorPicker R="{Binding R}" G="{Binding G}" B="{Binding B}" A="{Binding A}" H="{Binding H}" S="{Binding S}" V="{Binding V}"/>
+                <TextBlock Text="{Binding RGBAInfo}" Foreground="WhiteSmoke" HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding HSVAInfo}" Foreground="WhiteSmoke" HorizontalAlignment="Center"/>
             </StackPanel>
         </Border>
     </Grid>

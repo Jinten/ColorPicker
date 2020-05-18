@@ -30,6 +30,13 @@ namespace ColorPicker.ViewModels
         }
         float _B = 1;
 
+        public float A
+        {
+            get => _A;
+            set => RaisePropertyChangedIfSet(ref _A, value, RelativeProperties);
+        }
+        float _A = 1;
+
         public float H
         {
             get => _H;
@@ -53,11 +60,11 @@ namespace ColorPicker.ViewModels
 
         string[] RelativeProperties = new string[]
         {
-            nameof(RGBInfo),
-            nameof(HSVInfo)
+            nameof(RGBAInfo),
+            nameof(HSVAInfo)
         };
 
-        public string RGBInfo => string.Format("R:{0}, G:{1}, B:{2}", R, G, B);
-        public string HSVInfo => string.Format("H:{0}, S:{1}, V:{2}", H, S, V);
+        public string RGBAInfo => string.Format("R:{0}, G:{1}, B:{2}, A:{3}", R, G, B, A);
+        public string HSVAInfo => string.Format("H:{0}, S:{1}, V:{2}, A:{3}", H, S, V, A);
     }
 }

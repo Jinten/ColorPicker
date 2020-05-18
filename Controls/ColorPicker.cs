@@ -15,18 +15,37 @@ using System.Windows.Shapes;
 
 namespace ColorPicker.Controls
 {
-    internal static class ControlLayout
+    internal static class ControlSize
     {
+        public const double CurrentPreviewWidth = 128;
+        public const double CurrentPreviewHeight = 16;
+
         public const double SVPickAreaWidth = 255.0;
         public const double SVPickAreaHeight = 255.0;
         public const double HPickAreaWidth = 24.0;
         public const double HPickAreaHeight = 255.0;
+        public const double APickAreaWidth = 24.0;
+        public const double APickAreaHeight = 255.0;
 
         public const double SVPickerWidth = 16;
         public const double SVPickerHeight = 16;
 
         public const double HPickerWidth = 24;
-        public const double HPickerHeight = 4;
+        public const double HPickerHeight = 1;
+        public const double APickerWidth = 24;
+        public const double APickerHeight = 1;
+
+        public const double InputAreaWidth = 255;
+        public const double InputAreaHeight = 18;
+        public const double InputContentWidth = 48;
+    }
+
+    internal static class MathEx
+    {
+        internal static double Clamp(double v, double min, double max)
+        {
+            return Math.Min(max, Math.Max(min, v));
+        }
     }
 
     internal class Picker<T> where T : FrameworkElement
@@ -39,9 +58,6 @@ namespace ColorPicker.Controls
         public Picker(T element)
         {
             Element = element;
-
-            Position.X = 128 - Element.ActualWidth * 0.5;
-            Position.Y = 128 - Element.ActualHeight * 0.5;
 
             var transformGroup = new TransformGroup();
             transformGroup.Children.Add(Position);
@@ -169,29 +185,44 @@ namespace ColorPicker.Controls
             set => SetValue(BaseColorProperty, value);
         }
         public static readonly DependencyProperty BaseColorProperty = DependencyProperty.Register(
-            nameof(BaseColor), typeof(SolidColorBrush), typeof(ColorPickerWindow), new FrameworkPropertyMetadata(Brushes.Red));
+            nameof(BaseColor), typeof(SolidColorBrush), typeof(ColorPickerWindow), new FrameworkPropertyMetadata(null));
+
+        SolidColorBrush CurrentColor
+        {
+            get => (SolidColorBrush)GetValue(CurrentColorProperty);
+            set => SetValue(CurrentColorProperty, value);
+        }
+        public static readonly DependencyProperty CurrentColorProperty = DependencyProperty.Register(
+            nameof(CurrentColor), typeof(SolidColorBrush), typeof(ColorPickerWindow), new FrameworkPropertyMetadata(null));
 
         public double Hue { get; private set; } = 1.0;
         public double Saturate { get; private set; } = 0.0;
         public double Value { get; private set; } = 1.0;
+        public double Alpha { get; private set; } = 1.0;
 
-        public Action<HSV> HSVPropertyChanged { get; } = null;
+        Action<HSV> HSVPropertyChanged { get; } = null;
+        Action<double> AlphaPropertyChanged { get; } = null;
 
         Rectangle _SVPickArea = null;
         Rectangle _HPickArea = null;
+        Rectangle _APickArea = null;
         Picker<Ellipse> _SVPicker = null;
         Picker<Rectangle> _HPicker = null;
+        Picker<Rectangle> _APicker = null;
 
         bool _IsCapturedSVPicker = false;
         bool _IsCapturedHPicker = false;
+        bool _IsCapturedAPicker = false;
 
-        public ColorPickerWindow(HSV initHSV, Action<HSV> hsvPropertyChanged)
+        public ColorPickerWindow(HSV initHSV, double alpha, Action<HSV> hsvPropertyChanged, Action<double> alphaPropertyChanged)
         {
             Hue = initHSV.H;
             Saturate = initHSV.S;
             Value = initHSV.V;
+            Alpha = alpha;
 
             HSVPropertyChanged = hsvPropertyChanged;
+            AlphaPropertyChanged = alphaPropertyChanged;
         }
 
         public override void OnApplyTemplate()
@@ -200,53 +231,47 @@ namespace ColorPicker.Controls
 
             _SVPickArea = GetTemplateChild("__SVPickArea__") as Rectangle;
             _HPickArea = GetTemplateChild("__HPickArea__") as Rectangle;
+            _APickArea = GetTemplateChild("__APickArea__") as Rectangle;
 
             _SVPicker = new Picker<Ellipse>(GetTemplateChild("__SVPicker__") as Ellipse);
-            _SVPicker.Position.X = ControlLayout.SVPickAreaWidth * 0.5 - ControlLayout.SVPickerWidth * 0.5;
-            _SVPicker.Position.Y = ControlLayout.SVPickAreaHeight * 0.5 - ControlLayout.SVPickerHeight * 0.5;
+            _SVPicker.Position.X = ControlSize.SVPickAreaWidth * 0.5 - ControlSize.SVPickerWidth * 0.5;
+            _SVPicker.Position.Y = ControlSize.SVPickAreaHeight * 0.5 - ControlSize.SVPickerHeight * 0.5;
 
             _HPicker = new Picker<Rectangle>(GetTemplateChild("__HPicker__") as Rectangle);
-            _HPicker.Position.X = 0;
-            _HPicker.Position.Y = 0;
+            _APicker = new Picker<Rectangle>(GetTemplateChild("__APicker__") as Rectangle);
 
-            _SVPickArea.MouseLeftButtonDown += SVPickerArea_MouseLeftButtonDown;
-            _SVPickArea.MouseLeftButtonUp += SVPickerArea_MouseLeftButtonUp;
+            _SVPickArea.MouseLeftButtonDown += SVPicker_MouseLeftButtonDown;
+            _SVPickArea.MouseLeftButtonUp += SVPicker_MouseLeftButtonUp;
             _SVPicker.Element.MouseLeftButtonDown += SVPicker_MouseLeftButtonDown;
             _SVPicker.Element.MouseLeftButtonUp += SVPicker_MouseLeftButtonUp;
 
-            _HPickArea.MouseLeftButtonDown += HPickerArea_MouseLeftButtonDown;
-            _HPickArea.MouseLeftButtonUp += HPickerArea_MouseLeftButtonUp;
-
+            _HPickArea.MouseLeftButtonDown += HPicker_MouseLeftButtonDown;
+            _HPickArea.MouseLeftButtonUp += HPicker_MouseLeftButtonUp;
             _HPicker.Element.MouseLeftButtonDown += HPicker_MouseLeftButtonDown;
             _HPicker.Element.MouseLeftButtonUp += HPicker_MouseLeftButtonUp;
 
-            UpdateSVPickerPosition(Saturate * ControlLayout.SVPickAreaWidth, (1 - Value) * ControlLayout.SVPickAreaHeight);
-            UpdateHPickerPosition(Hue * ControlLayout.HPickAreaHeight);
+            _APickArea.MouseLeftButtonDown += APicker_MouseLeftButtonDown;
+            _APickArea.MouseLeftButtonUp += APicker_MouseLeftButtonUp;
+            _APicker.Element.MouseLeftButtonDown += APicker_MouseLeftButtonDown;
+            _APicker.Element.MouseLeftButtonUp += APicker_MouseLeftButtonUp;
+
+            UpdateSVPickerPosition(Saturate * ControlSize.SVPickAreaWidth, (1 - Value) * ControlSize.SVPickAreaHeight);
+            UpdateHPickerPosition(Hue * ControlSize.HPickAreaHeight);
+            UpdateAPickerPosition((1.0 - Alpha) * ControlSize.APickAreaHeight);
+            UpdateBaseColor();
+            UpdateCurrentColor();
         }
 
-        public void UpdateSV(MouseEventArgs e)
+        protected override void OnMouseEnter(MouseEventArgs e)
         {
-            var svPos = e.GetPosition(_SVPickArea);
-            Saturate = Math.Max(0.0, Math.Min(1.0, svPos.X / _SVPickArea.ActualWidth));
-            Value = 1 - Math.Max(0.0, Math.Min(1.0, svPos.Y / _SVPickArea.ActualHeight));
+            base.OnMouseEnter(e);
 
-            UpdateSVPickerPosition(svPos.X, svPos.Y);
-
-            HSVPropertyChanged(new HSV(Hue, Saturate, Value));
-        }
-
-        public void UpdateH(MouseEventArgs e)
-        {
-            var hPos = e.GetPosition(_HPickArea);
-            Hue = Math.Max(0.0, Math.Min(1.0, hPos.Y / _HPickArea.ActualHeight));
-
-            UpdateHPickerPosition(Hue * ControlLayout.HPickAreaHeight);
-
-            var rgb = ColorConverter.HSVtoRGB(new HSV(Hue, 1, 1));
-            BaseColor = new SolidColorBrush(Color.FromScRgb(1, (float)rgb.R, (float)rgb.G, (float)rgb.B));
-            BaseColor.Freeze();
-
-            HSVPropertyChanged(new HSV(Hue, Saturate, Value));
+            if (e.LeftButton == MouseButtonState.Released)
+            {
+                _IsCapturedSVPicker = false;
+                _IsCapturedHPicker = false;
+                _IsCapturedAPicker = false;
+            }
         }
 
         protected override void OnPreviewMouseMove(MouseEventArgs e)
@@ -262,6 +287,11 @@ namespace ColorPicker.Controls
             {
                 UpdateH(e);
             }
+
+            if (_IsCapturedAPicker)
+            {
+                UpdateA(e);
+            }
         }
 
         protected override void OnPreviewMouseLeftButtonUp(MouseButtonEventArgs e)
@@ -270,38 +300,93 @@ namespace ColorPicker.Controls
 
             _IsCapturedSVPicker = false;
             _IsCapturedHPicker = false;
+            _IsCapturedAPicker = false;
         }
 
-        protected override void OnMouseLeave(MouseEventArgs e)
+        void UpdateSV(MouseEventArgs e)
         {
-            base.OnMouseLeave(e);
+            var svPos = e.GetPosition(_SVPickArea);
+            Saturate = Math.Max(0.0, Math.Min(1.0, svPos.X / _SVPickArea.ActualWidth));
+            Value = 1 - Math.Max(0.0, Math.Min(1.0, svPos.Y / _SVPickArea.ActualHeight));
 
-            _IsCapturedSVPicker = false;
-            _IsCapturedHPicker = false;
+            UpdateSVPickerPosition(Saturate * ControlSize.HPickAreaHeight, (1.0 - Value) * ControlSize.HPickAreaHeight);
+
+            UpdateCurrentColor();
+
+            HSVPropertyChanged(new HSV(Hue, Saturate, Value));
+        }
+
+        void UpdateH(MouseEventArgs e)
+        {
+            var hPos = e.GetPosition(_HPickArea);
+            Hue = MathEx.Clamp(hPos.Y / ControlSize.HPickAreaHeight, 0.0, 1.0);
+
+            UpdateHPickerPosition(Hue * ControlSize.HPickAreaHeight);
+
+            UpdateBaseColor();
+            UpdateCurrentColor();
+
+            HSVPropertyChanged(new HSV(Hue, Saturate, Value));
+        }
+
+        void UpdateA(MouseEventArgs e)
+        {
+            var aPos = e.GetPosition(_APickArea);
+            Alpha = 1.0 - MathEx.Clamp(aPos.Y / ControlSize.APickAreaHeight, 0, 1);
+
+            UpdateAPickerPosition((1.0 - Alpha) * ControlSize.APickAreaHeight);
+
+            UpdateCurrentColor();
+
+            AlphaPropertyChanged(Alpha);
+        }
+
+        void UpdateBaseColor()
+        {
+            var rgb = ColorConverter.HSVtoRGB(new HSV(Hue, 1, 1));
+
+            if (BaseColor == null)
+            {
+                BaseColor = new SolidColorBrush(Color.FromScRgb(1, (float)rgb.R, (float)rgb.G, (float)rgb.B));
+            }
+            else
+            {
+                BaseColor.Color = Color.FromScRgb(1, (float)rgb.R, (float)rgb.G, (float)rgb.B);
+            }
+        }
+
+        void UpdateCurrentColor()
+        {
+            var rgb = ColorConverter.HSVtoRGB(new HSV(Hue, Saturate, Value));
+
+            if (CurrentColor == null)
+            {
+                CurrentColor = new SolidColorBrush(Color.FromScRgb((float)Alpha, (float)rgb.R, (float)rgb.G, (float)rgb.B));
+            }
+            else
+            {
+                CurrentColor.Color = Color.FromScRgb((float)Alpha, (float)rgb.R, (float)rgb.G, (float)rgb.B);
+            }
         }
 
         void UpdateSVPickerPosition(double x, double y)
         {
-            double center_x = x - _SVPicker.Element.ActualWidth * 0.5;
-            double center_y = y - _SVPicker.Element.ActualHeight * 0.5;
-            _SVPicker.Position.X = Math.Min(_SVPickArea.ActualWidth - _SVPicker.HalfWidth, Math.Max(-_SVPicker.HalfWidth, center_x));
-            _SVPicker.Position.Y = Math.Min(_SVPickArea.ActualHeight - _SVPicker.HalfHeight, Math.Max(-_SVPicker.HalfHeight, center_y));
+            double half_w = ControlSize.SVPickerWidth * 0.5;
+            double half_h = ControlSize.SVPickerHeight * 0.5;
+            double center_x = x - half_w;
+            double center_y = y - half_h;
+            _SVPicker.Position.X = MathEx.Clamp(center_x, -half_w, ControlSize.SVPickAreaWidth - half_w);
+            _SVPicker.Position.Y = MathEx.Clamp(center_y, -half_h, ControlSize.SVPickAreaHeight - half_h);
         }
 
         void UpdateHPickerPosition(double y)
         {
-            _HPicker.Position.Y = y - _HPicker.Element.ActualHeight * 0.5;
-            _HPicker.Position.Y = Math.Max(0.0, Math.Min(_HPickArea.ActualHeight - _HPicker.Element.ActualHeight, _HPicker.Position.Y));
+            _HPicker.Position.Y = MathEx.Clamp(y, 0, ControlSize.HPickAreaHeight);
         }
 
-        void SVPickerArea_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        void UpdateAPickerPosition(double y)
         {
-            _IsCapturedSVPicker = true;
-        }
-
-        void SVPickerArea_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            _IsCapturedSVPicker = false;
+            _APicker.Position.Y = MathEx.Clamp(y, 0, ControlSize.APickAreaHeight);
         }
 
         void SVPicker_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -314,16 +399,6 @@ namespace ColorPicker.Controls
             _IsCapturedSVPicker = false;
         }
 
-        void HPickerArea_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            _IsCapturedHPicker = true;
-        }
-
-        void HPickerArea_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            _IsCapturedHPicker = false;
-        }
-
         void HPicker_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             _IsCapturedHPicker = true;
@@ -333,6 +408,17 @@ namespace ColorPicker.Controls
         {
             _IsCapturedHPicker = false;
         }
+
+        void APicker_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _IsCapturedAPicker = true;
+        }
+
+        void APicker_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            _IsCapturedAPicker = false;
+        }
+
     }
 
     public class ColorPicker : Control
@@ -440,12 +526,12 @@ namespace ColorPicker.Controls
             var screenPosition = PointToScreen(e.GetPosition(this));
 
             var initHSV = ColorConverter.RGBtoHSV(new RGB(R, G, B));
-            _ColorPickerWindow = new ColorPickerWindow(initHSV, HSVPropertyChanged)
+            _ColorPickerWindow = new ColorPickerWindow(initHSV, A, HSVPropertyChanged, AlphaPropertyChanged)
             {
                 DataContext = this,
                 Style = ColorPickerWindowStyle,
                 ResizeMode = ResizeMode.NoResize,
-                Title="Color Picker - proto type.",
+                Title = "Color Picker - proto type.",
                 Left = screenPosition.X,
                 Top = screenPosition.Y,
             };
@@ -463,7 +549,13 @@ namespace ColorPicker.Controls
             G = (float)rgb.G;
             B = (float)rgb.B;
 
-            _PreviewColor.Color = Color.FromScRgb(1, R, G, B);
+            _PreviewColor.Color = Color.FromScRgb(A, R, G, B);
+        }
+
+        void AlphaPropertyChanged(double alpha)
+        {
+            A = (float)alpha;
+            _PreviewColor.Color = Color.FromScRgb(A, R, G, B);
         }
 
         void ColorPicker_Unloaded(object sender, RoutedEventArgs e)
