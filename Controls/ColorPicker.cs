@@ -378,6 +378,8 @@ namespace ColorPicker.Controls
 
         protected override void OnClosed(EventArgs e)
         {
+            base.OnClosed(e);
+
             HSVPropertyChanged = null;
             AlphaPropertyChanged = null;
 
@@ -741,6 +743,11 @@ namespace ColorPicker.Controls
         {
             base.OnMouseDoubleClick(e);
 
+            if(_ColorPickerWindow != null)
+            {
+                return;
+            }
+
             IsOpenedColorPicker = true;
             var screenPosition = PointToScreen(e.GetPosition(this));
 
@@ -754,6 +761,7 @@ namespace ColorPicker.Controls
                 Left = screenPosition.X,
                 Top = screenPosition.Y,
             };
+            _ColorPickerWindow.Closed += ColorPickerWindow_Closed;
             _ColorPickerWindow.Show();
         }
 
@@ -770,6 +778,12 @@ namespace ColorPicker.Controls
         static void AlphaPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             (d as ColorPicker).UpdateAlpha();
+        }
+
+        void ColorPickerWindow_Closed(object sender, EventArgs e)
+        {
+            _ColorPickerWindow.Closed -= ColorPickerWindow_Closed;
+            _ColorPickerWindow = null;
         }
 
         void UpdateRGB()
