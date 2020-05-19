@@ -92,7 +92,9 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Behaviors\NumberInputBehavior.cs" />
     <Compile Include="Controls\ColorPicker.cs" />
+    <Compile Include="Converters\ColorCodeConverter.cs" />
     <Compile Include="Converters\ColorValueInputConverter.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
