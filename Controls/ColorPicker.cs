@@ -763,6 +763,8 @@ namespace ColorPicker.Controls
             };
             _ColorPickerWindow.Closed += ColorPickerWindow_Closed;
             _ColorPickerWindow.Show();
+
+            e.Handled = true;
         }
 
         static void RGBPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
